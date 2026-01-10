@@ -33,7 +33,6 @@ def process_query_user(user_query: str):
     print(f"--- Context retrieved from {len(retrieved_docs)} chunks ---")
 
     # 5. GENERATION: Send query + context to the LLM
-    # We use llama3.2 (or your preferred local model) to generate the answer
     prompt = f"""
     You are a helpful assistant. Use the provided context to answer the user's question.
     If the answer is not in the context, say you don't know.

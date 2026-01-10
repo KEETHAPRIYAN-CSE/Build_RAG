@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Vector Processor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">Upload PDF to ChromaDB</h1>
+        
+        <form id="uploadForm" class="space-y-4">
+            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                <input type="file" id="pdfFile" accept=".pdf" class="hidden">
+                <label for="pdfFile" class="cursor-pointer">
+                    <span class="text-blue-600 font-semibold">Click to upload</span> or drag and drop
+                    <p class="text-xs text-gray-500 mt-1">PDF files only</p>
+                </label>
+                <p id="fileName" class="mt-2 text-sm text-gray-700 font-medium"></p>
+            </div>
+
+            <button type="submit" id="submitBtn" class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400">
+                Process Document
+            </button>
+        </form>
+
+        <div id="status" class="mt-6 hidden">
+            <div class="flex items-center justify-center space-x-2">
+                <div id="spinner" class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <p id="statusText" class="text-sm text-gray-600">Processing... this may take a moment.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('pdfFile');
+        const fileNameDisplay = document.getElementById('fileName');
+        const form = document.getElementById('uploadForm');
+        const statusDiv = document.getElementById('status');
+        const statusText = document.getElementById('statusText');
+        const submitBtn = document.getElementById('submitBtn');
+
+        fileInput.onchange = () => {
+            if (fileInput.files.length > 0) {
+                fileNameDisplay.textContent = fileInput.files[0].name;
+            }
+        };
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            if (fileInput.files.length === 0) return alert("Please select a file");
+
+            const formData = new FormData();
+            formData.append('pdf_file', fileInput.files[0]);
+
+            // UI Feedback
+            statusDiv.classList.remove('hidden');
+            submitBtn.disabled = true;
+
+            try {
+                const response = await fetch('/upload', { method: 'POST', body: formData });
+                const result = await response.json();
+
+                if (response.ok) {
+                    statusText.textContent = "✅ " + result.message;
+                    statusText.classList.add('text-green-600');
+                    document.getElementById('spinner').classList.add('hidden');
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (err) {
+                statusText.textContent = "❌ Error: " + err.message;
+                statusText.classList.add('text-red-600');
+            }
+        };
+    </script>
+</body>
+</html>
