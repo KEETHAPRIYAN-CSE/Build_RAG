@@ -1,79 +1,386 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PDF Vector Processor</title>
+    <title>PDF RAG Assistant</title>
     <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 min-h-screen flex items-center justify-center">
-    <div class="bg-white p-8 rounded-xl shadow-lg max-w-md w-full">
-        <h1 class="text-2xl font-bold text-gray-800 mb-6 text-center">Upload PDF to ChromaDB</h1>
-        
-        <form id="uploadForm" class="space-y-4">
-            <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
-                <input type="file" id="pdfFile" accept=".pdf" class="hidden">
-                <label for="pdfFile" class="cursor-pointer">
-                    <span class="text-blue-600 font-semibold">Click to upload</span> or drag and drop
-                    <p class="text-xs text-gray-500 mt-1">PDF files only</p>
-                </label>
-                <p id="fileName" class="mt-2 text-sm text-gray-700 font-medium"></p>
-            </div>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sohne:wght@500;600;700&display=swap');
 
-            <button type="submit" id="submitBtn" class="w-full bg-blue-600 text-white py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400">
-                Process Document
-            </button>
-        </form>
+        * {
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        }
 
-        <div id="status" class="mt-6 hidden">
-            <div class="flex items-center justify-center space-x-2">
-                <div id="spinner" class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                <p id="statusText" class="text-sm text-gray-600">Processing... this may take a moment.</p>
-            </div>
-        </div>
-    </div>
+        html {
+            scroll-behavior: smooth;
+        }
 
-    <script>
-        const fileInput = document.getElementById('pdfFile');
-        const fileNameDisplay = document.getElementById('fileName');
-        const form = document.getElementById('uploadForm');
-        const statusDiv = document.getElementById('status');
-        const statusText = document.getElementById('statusText');
-        const submitBtn = document.getElementById('submitBtn');
+        body {
+            background: #0a0a0a;
+            overflow-x: hidden;
+        }
 
-        fileInput.onchange = () => {
-            if (fileInput.files.length > 0) {
-                fileNameDisplay.textContent = fileInput.files[0].name;
+        body::before {
+            content: '';
+            position: fixed;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background:
+                radial-gradient(circle at 20% 50%, rgba(79, 172, 254, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 80% 80%, rgba(124, 58, 255, 0.12) 0%, transparent 40%),
+                radial-gradient(circle at 40% 20%, rgba(34, 197, 94, 0.08) 0%, transparent 35%),
+                radial-gradient(circle at 90% 30%, rgba(168, 85, 247, 0.1) 0%, transparent 38%);
+            animation: auroraWave 15s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background:
+                radial-gradient(circle at 50% 50%, rgba(30, 144, 255, 0.03) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        @keyframes auroraWave {
+            0% {
+                transform: translate(0, 0) rotate(0deg);
             }
-        };
 
-        form.onsubmit = async (e) => {
+            25% {
+                transform: translate(-30px, -20px) rotate(90deg);
+            }
+
+            50% {
+                transform: translate(-50px, -40px) rotate(180deg);
+            }
+
+            75% {
+                transform: translate(-30px, -20px) rotate(270deg);
+            }
+
+            100% {
+                transform: translate(0, 0) rotate(360deg);
+            }
+        }
+
+        .premium-gradient {
+            background: linear-gradient(135deg, #ffffff 0%, #f5f5f5 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .card-hover {
+            transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .card-hover:hover {
+            transform: translateY(-2px);
+        }
+
+        .input-premium {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.4s ease;
+        }
+
+        .input-premium:focus {
+            background: rgba(255, 255, 255, 0.04);
+            border-color: rgba(255, 255, 255, 0.2);
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.1);
+        }
+
+        .button-premium {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .button-premium::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            transition: left 0.5s ease;
+        }
+
+        .button-premium:hover::before {
+            left: 100%;
+        }
+
+        .button-premium:active {
+            transform: scale(0.98);
+        }
+
+        .status-text {
+            transition: all 0.4s ease;
+        }
+
+        .divider-line {
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+        }
+
+        .section-heading {
+            font-size: 2.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            line-height: 1.2;
+        }
+
+        .loading-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.5;
+            }
+        }
+
+        .answer-box {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .answer-text {
+            font-weight: 500;
+            line-height: 1.8;
+            color: #e5e5e5;
+        }
+    </style>
+</head>
+
+<body class="text-gray-100">
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full backdrop-blur-md bg-black/30 border-b border-white/5 z-50">
+        <div class="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div
+                    class="w-8 h-8 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center">
+                    <span class="text-white text-sm font-bold">📄</span>
+                </div>
+                <span class="text-lg font-semibold tracking-tight">RAG</span>
+            </div>
+            <div class="text-xs text-gray-500">Knowledge Assistant</div>
+        </div>
+    </nav>
+
+    <main class="pt-20">
+        <!-- Hero Section -->
+        <section class="min-h-screen flex flex-col items-center justify-center px-6 py-20">
+            <div class="max-w-3xl mx-auto text-center space-y-8">
+                <div class="space-y-6">
+                    <h1 class="section-heading premium-gradient">
+                        Extract intelligence <br>from documents
+                    </h1>
+                    <p class="text-lg text-gray-400 font-light tracking-tight max-w-2xl mx-auto leading-relaxed">
+                        Upload your documents and ask intelligent questions. Powered by advanced retrieval augmented
+                        generation.
+                    </p>
+                </div>
+
+                <div class="pt-8 flex justify-center gap-4">
+                    <button onclick="document.getElementById('uploadSection').scrollIntoView()"
+                        class="button-premium px-8 py-3.5 bg-white text-black rounded-full font-semibold text-sm hover:bg-gray-100 transition">
+                        Get Started
+                    </button>
+                    <button onclick="window.location.href = 'Learn.html';"
+                        class="button-premium px-8 py-3.5 border border-white/20 rounded-full font-semibold text-sm hover:bg-white/5 transition">
+                        Learn More
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-20 absolute bottom-20 left-1/2 transform -translate-x-1/2 animate-bounce">
+                <div class="w-5 h-8 border border-white/30 rounded-full flex justify-center">
+                    <div class="w-1 h-2 bg-white/50 rounded-full mt-2"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Divider -->
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="divider-line"></div>
+        </div>
+
+        <!-- Upload Section -->
+        <section id="uploadSection" class="min-h-screen flex items-center justify-center px-6 py-20">
+            <div class="max-w-2xl w-full space-y-12">
+                <div class="text-center space-y-3">
+                    <h2 class="text-3xl font-bold tracking-tight">Step 1: Index Your Document</h2>
+                    <p class="text-gray-400 font-light">Upload a PDF to begin building your knowledge base</p>
+                </div>
+
+                <div class="card-hover">
+                    <div
+                        class="relative p-12 rounded-2xl border border-white/10 bg-gradient-to-br from-white/[0.02] to-white/[0.01] backdrop-blur-xl">
+                        <form id="uploadForm" class="space-y-6">
+                            <div class="relative">
+                                <input type="file" id="pdfFile" accept=".pdf,.docx,.pptx,.jpg,.jpeg,.png"
+                                   class="input-premium w-full p-4 rounded-xl text-sm ...">
+                            </div>
+
+                            <button type="submit" id="uploadBtn"
+                                class="button-premium w-full py-4 bg-white text-black rounded-xl font-semibold text-base hover:bg-gray-50 transition active:scale-[0.98]">
+                                Index Document
+                            </button>
+                        </form>
+
+                        <p id="uploadStatus" class="status-text mt-4 text-sm text-center text-gray-400 h-6"></p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4 text-center">
+                    <div class="p-4 rounded-lg bg-white/[0.02] border border-white/10">
+                        <div class="text-2xl font-bold mb-1">⚡</div>
+                        <p class="text-xs text-gray-400">Fast Indexing</p>
+                    </div>
+                    <div class="p-4 rounded-lg bg-white/[0.02] border border-white/10">
+                        <div class="text-2xl font-bold mb-1">🎯</div>
+                        <p class="text-xs text-gray-400">Accurate Results</p>
+                    </div>
+                    <div class="p-4 rounded-lg bg-white/[0.02] border border-white/10">
+                        <div class="text-2xl font-bold mb-1">🔐</div>
+                        <p class="text-xs text-gray-400">Secure Processing</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Divider -->
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="divider-line"></div>
+        </div>
+
+        <!-- Query Section -->
+        <section class="min-h-screen flex items-center justify-center px-6 py-20">
+            <div class="max-w-2xl w-full space-y-12">
+                <div class="text-center space-y-3">
+                    <h2 class="text-3xl font-bold tracking-tight">Step 2: Ask Questions</h2>
+                    <p class="text-gray-400 font-light">Get intelligent answers from your indexed documents</p>
+                </div>
+
+                <div class="card-hover space-y-6">
+                    <textarea id="userQuery" rows="4" placeholder="What would you like to know..."
+                        class="input-premium w-full p-5 rounded-xl text-base outline-none resize-none"></textarea>
+
+                    <button id="queryBtn"
+                        class="button-premium w-full py-4 bg-white text-black rounded-xl font-semibold text-base hover:bg-gray-50 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                        Ask Question
+                    </button>
+
+                    <!-- Answer Section -->
+                    <div id="outputArea" class="hidden pt-6">
+                        <div class="divider-line mb-6"></div>
+                        <div class="space-y-4">
+                            <h3 class="text-sm font-semibold text-gray-300 uppercase tracking-wider">Response</h3>
+                            <div class="answer-box p-6 rounded-xl">
+                                <p id="answerText" class="answer-text"></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="border-t border-white/5 py-12 px-6">
+            <div class="max-w-7xl mx-auto text-center">
+                <p class="text-sm text-gray-500">
+                    Crafted with precision. Powered by RAG technology.
+                </p>
+            </div>
+        </footer>
+
+    </main>
+
+    <!-- JS -->
+    <script>
+        document.getElementById('uploadForm').onsubmit = async (e) => {
             e.preventDefault();
-            if (fileInput.files.length === 0) return alert("Please select a file");
+            const file = document.getElementById('pdfFile').files[0];
+            if (!file) return alert("Select a PDF");
+
+            const status = document.getElementById('uploadStatus');
+            status.textContent = "Indexing...";
+            status.className = "status-text text-sm text-center text-gray-300 h-6";
 
             const formData = new FormData();
-            formData.append('pdf_file', fileInput.files[0]);
-
-            // UI Feedback
-            statusDiv.classList.remove('hidden');
-            submitBtn.disabled = true;
+            formData.append('pdf_file', file);
 
             try {
-                const response = await fetch('/upload', { method: 'POST', body: formData });
-                const result = await response.json();
+                const res = await fetch('/upload', { method: 'POST', body: formData });
+                const data = await res.json();
 
-                if (response.ok) {
-                    statusText.textContent = "✅ " + result.message;
-                    statusText.classList.add('text-green-600');
-                    document.getElementById('spinner').classList.add('hidden');
-                } else {
-                    throw new Error(result.error);
-                }
-            } catch (err) {
-                statusText.textContent = "❌ Error: " + err.message;
-                statusText.classList.add('text-red-600');
+                status.textContent = data.message || data.error;
+                status.className = data.error ? "status-text text-sm text-center text-red-400 h-6" : "status-text text-sm text-center text-green-400 h-6";
+            } catch {
+                status.textContent = "Connection error";
+                status.className = "status-text text-sm text-center text-red-400 h-6";
             }
         };
+
+        document.getElementById('queryBtn').onclick = async () => {
+            const query = document.getElementById('userQuery').value;
+            if (!query.trim()) return;
+
+            const btn = document.getElementById('queryBtn');
+            const output = document.getElementById('outputArea');
+            const answer = document.getElementById('answerText');
+
+            btn.disabled = true;
+            output.classList.remove('hidden');
+            answer.textContent = "Thinking...";
+            answer.classList.add('loading-pulse');
+
+            try {
+                const res = await fetch('/query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query })
+                });
+                const data = await res.json();
+                answer.textContent = data.answer || data.error;
+                answer.classList.remove('loading-pulse');
+            } catch {
+                answer.textContent = "Unable to retrieve answer";
+                answer.classList.remove('loading-pulse');
+            } finally {
+                btn.disabled = false;
+            }
+        };
+
+        // Allow Enter key for query submission
+        document.getElementById('userQuery').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                document.getElementById('queryBtn').click();
+            }
+        });
     </script>
+
 </body>
+
 </html>

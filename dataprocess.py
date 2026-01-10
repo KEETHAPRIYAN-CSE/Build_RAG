@@ -1,23 +1,24 @@
 import os
-
 os.environ["ANONYMIZED_TELEMETRY"] = "False"
 
-from pdfreader import read_pdf
+# FIX: Changed import from read_pdf to read_document
+from document_reader import read_document 
 from chunker import chunk_pages   
 from embedder import embed_chunks
 from vector import store_in_chroma
-from typing import List
 
-pdf_path = "oops.pdf"
+pdf_path = "oops.pdf" # Ensure this file exists in your directory
+
 def run():
-    pages = read_pdf(pdf_path)
+    # FIX: Changed call to read_document
+    pages = read_document(pdf_path)
 
-    chunks = chunk_pages(pages, chunk_size=1000, chunk_overlap=150  )
+    chunks = chunk_pages(pages, chunk_size=1000, chunk_overlap=150)
 
     embedded_chunks = embed_chunks(chunks)
-    #print("first embedded chunk:", embedded_chunks[0])
     
-    store_in_chroma(chunks, embedded_chunks)
+    # Store with filename for metadata
+    store_in_chroma(chunks, embedded_chunks, filename=pdf_path)
 
 if __name__ == "__main__":
     run()
